@@ -1,77 +1,66 @@
-package az.company.oauth2login.service;
+package az.company.oauth2login.security.oauth2;
 
-import az.company.oauth2login.model.User;
-import az.company.oauth2login.repository.UserRepository;
-import jakarta.servlet.ServletException;
+import az.company.oauth2login.domain.entity.User;
+import az.company.oauth2login.security.jwt.JwtTokenProvider;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private final TokenService tokenService;
-    private final UserRepository userRepository;
-
-    @Value("${app.oauth2.redirect-uri}")
-    private String redirectUri;
+    private final JwtTokenProvider tokenProvider;
+    private final ObjectMapper objectMapper;
 
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-        String email = oAuth2User.getAttribute("email");
-        String name = oAuth2User.getAttribute("name");
-        String picture = oAuth2User.getAttribute("picture");
+    public void onAuthenticationSuccess(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Authentication authentication
+    ) throws IOException {
 
-        // 1. Persist or Update User
-        User user = userRepository.findByEmail(email)
-                .map(existingUser -> {
-                    existingUser.setLastLogin(LocalDateTime.now());
-                    existingUser.setImageUrl(picture);
-                    existingUser.setName(name); // Update name if changed
-                    return userRepository.save(existingUser);
-                })
-                .orElseGet(() -> {
-                    User newUser = User.builder()
-                            .email(email)
-                            .name(name)
-                            .imageUrl(picture)
-                            .provider(User.AuthProvider.GOOGLE)
-                            .providerId(oAuth2User.getName()) // Google SUB
-                            .role(User.Role.USER)
-                            .lastLogin(LocalDateTime.now())
-                            .build();
-                    return userRepository.save(newUser);
-                });
+        if (response.isCommitted()) {
+            log.warn("Response already committed — cannot write.");
+            return;
+        }
 
-        // 2. Generate Tokens
-        // Note: In a real app, you might want to wrap 'User' in a UserDetails implementation
-        // For simplicity here, we create a simple UserDetails-like principal
-        org.springframework.security.core.userdetails.User principal = new org.springframework.security.core.userdetails.User(
-                user.getEmail(), "", java.util.Collections.emptyList()
-        );
+        CustomOAuth2UserPrincipal principal = (CustomOAuth2UserPrincipal) authentication.getPrincipal();
 
-        String accessToken = tokenService.generateAccessToken(principal);
-        String refreshToken = tokenService.generateRefreshToken(principal);
+        User user = principal.getUser();
 
-        // 3. Redirect to Frontend with tokens
-        String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
-                .queryParam("access_token", accessToken)
-                .queryParam("refresh_token", refreshToken)
-                .build().toUriString();
+        List<String> roles = principal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
 
-        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+        String accessToken = tokenProvider.generateAccessTokenFromEmail(user.getEmail(), roles);
+        String refreshToken = tokenProvider.generateRefreshTokenFromEmail(user.getEmail(), roles);
+
+        log.info("OAuth2 login successful for: {}", user.getEmail());
+
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setStatus(HttpServletResponse.SC_OK);
+
+        objectMapper.writeValue(response.getWriter(), Map.of(
+                "accessToken", accessToken,
+                "refreshToken", refreshToken,
+                "tokenType", "Bearer",
+                "email", user.getEmail(),
+                "name", user.getName(),
+                "roles", roles
+        ));
     }
 }

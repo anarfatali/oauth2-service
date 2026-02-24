@@ -1,4 +1,6 @@
-package az.company.oauth2login.security.oauth2;
+package az.company.oauth2login.security.oauth2.google;
+
+import az.company.oauth2login.security.oauth2.OAuth2UserInfo;
 
 import java.util.Map;
 
