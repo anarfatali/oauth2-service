@@ -1,7 +1,8 @@
-package az.company.oauth2login.security.oauth2;
+package az.company.oauth2login.security.oauth2.handler;
 
 import az.company.oauth2login.domain.entity.User;
 import az.company.oauth2login.security.jwt.JwtTokenProvider;
+import az.company.oauth2login.security.oauth2.CustomOAuth2UserPrincipal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

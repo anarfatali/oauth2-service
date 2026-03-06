@@ -1,4 +1,4 @@
-package az.company.oauth2login.security.oauth2;
+package az.company.oauth2login.security.oauth2.handler;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
