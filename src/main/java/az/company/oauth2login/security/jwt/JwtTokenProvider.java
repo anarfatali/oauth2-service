@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -99,6 +100,10 @@ public class JwtTokenProvider {
             log.warn("JWT token is empty or null: {}", e.getMessage());
         }
         return false;
+    }
+
+    public Instant getExpiryDateFromToken(String token) {
+        return parseClaims(token).getExpiration().toInstant();
     }
 
     private List<String> extractRoles(Authentication authentication) {

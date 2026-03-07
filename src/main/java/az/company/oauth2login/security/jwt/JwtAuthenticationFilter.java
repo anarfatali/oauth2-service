@@ -1,5 +1,6 @@
 package az.company.oauth2login.security.jwt;
 
+import az.company.oauth2login.service.TokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(
@@ -36,7 +38,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = extractTokenFromRequest(request);
 
-            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
+            if (StringUtils.hasText(jwt)
+                    && tokenProvider.validateToken(jwt)
+                    && !tokenBlacklistService.isBlacklisted(jwt))  {
                 String email = tokenProvider.getEmailFromToken(jwt);
                 List<String> roles = tokenProvider.getRolesFromToken(jwt);
 

@@ -21,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,6 +35,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
+    private final TokenBlacklistService tokenBlacklistService;
 
 
     @Transactional
@@ -82,16 +84,15 @@ public class AuthService {
         return buildAuthResponse(authentication);
     }
 
-    // ----------------------------------------------------------------
-    // Sign Out
-    // Note: JWT is stateless — true invalidation requires a token
-    // blacklist or short expiry. We handle the client-side contract
-    // here and will add blacklisting in a later step if needed.
-    // ----------------------------------------------------------------
+    public void signOut(String accessToken, String refreshToken) {
+        // Blacklist the access token
+        Instant accessExpiry = tokenProvider.getExpiryDateFromToken(accessToken);
+        tokenBlacklistService.blacklist(accessToken, accessExpiry);
 
-    public void signOut() {
-        // Clears the security context for the current thread.
-        // The client must delete the token on their side.
+        // Blacklist the refresh token too
+        Instant refreshExpiry = tokenProvider.getExpiryDateFromToken(refreshToken);
+        tokenBlacklistService.blacklist(refreshToken, refreshExpiry);
+
         SecurityContextHolder.clearContext();
     }
 
@@ -109,7 +110,7 @@ public class AuthService {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .email(userDetails.getEmail())
-                .name(userDetails.getUsername())
+                .name(userDetails.getName())
                 .roles(roles)
                 .build();
     }

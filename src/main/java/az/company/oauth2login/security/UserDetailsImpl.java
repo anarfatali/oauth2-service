@@ -16,6 +16,7 @@ public class UserDetailsImpl implements UserDetails {
 
     private final Long id;
     private final String email;
+    private final String name;
     private final String password;
     private final boolean enabled;
     private final Collection<? extends GrantedAuthority> authorities;
@@ -28,6 +29,7 @@ public class UserDetailsImpl implements UserDetails {
 
         return new UserDetailsImpl(
                 user.getId(),
+                user.getName(),
                 user.getEmail(),
                 user.getPassword(),
                 user.isEnabled(),
