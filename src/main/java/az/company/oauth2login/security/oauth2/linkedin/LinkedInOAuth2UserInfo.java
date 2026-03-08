@@ -6,32 +6,27 @@ import java.util.Map;
 
 public class LinkedInOAuth2UserInfo extends OAuth2UserInfo {
 
-    @Override
-    public Map<String, Object> getAttributes() {
-        return super.getAttributes();
-    }
-
     public LinkedInOAuth2UserInfo(Map<String, Object> attributes) {
         super(attributes);
     }
 
     @Override
     public String getId() {
-        return "";
+        return (String) attributes.get("sub");
     }
 
     @Override
     public String getName() {
-        return "";
-    }
-
-    @Override
-    public String getImageUrl() {
-        return "";
+        return (String) attributes.get("name");
     }
 
     @Override
     public String getEmail() {
-        return "";
+        return (String) attributes.get("email");
+    }
+
+    @Override
+    public String getImageUrl() {
+        return (String) attributes.get("picture");
     }
 }

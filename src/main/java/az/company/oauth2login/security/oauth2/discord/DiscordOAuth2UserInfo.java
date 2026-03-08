@@ -12,26 +12,30 @@ public class DiscordOAuth2UserInfo extends OAuth2UserInfo {
 
     @Override
     public String getId() {
-        return "";
+        return (String) attributes.get("id");
     }
 
     @Override
     public String getName() {
-        return "";
+        // "global_name" is the display name; fallback to "username"
+        String globalName = (String) attributes.get("global_name");
+        return globalName != null ? globalName : (String) attributes.get("username");
     }
 
     @Override
     public String getEmail() {
-        return "";
+        return (String) attributes.get("email");
     }
 
     @Override
     public String getImageUrl() {
-        return "";
-    }
+        String id = (String) attributes.get("id");
+        String avatarHash = (String) attributes.get("avatar");
 
-    @Override
-    public Map<String, Object> getAttributes() {
-        return super.getAttributes();
+        if (avatarHash != null) {
+            return String.format("https://cdn.discordapp.com/avatars/%s/%s.png", id, avatarHash);
+        }
+        // Default Discord avatar
+        return "https://cdn.discordapp.com/embed/avatars/0.png";
     }
 }

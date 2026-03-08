@@ -2,7 +2,6 @@ package az.company.oauth2login.security.oauth2;
 
 import lombok.Getter;
 
-import java.util.Date;
 import java.util.Map;
 
 @Getter
@@ -21,6 +20,4 @@ public abstract class OAuth2UserInfo {
     public abstract String getEmail();
 
     public abstract String getImageUrl();
-
-//    public abstract Date getBirthday();
 }

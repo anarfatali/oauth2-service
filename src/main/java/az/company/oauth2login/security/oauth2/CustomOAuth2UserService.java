@@ -8,15 +8,20 @@ import az.company.oauth2login.repository.RoleRepository;
 import az.company.oauth2login.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -35,8 +40,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 .getClientRegistration()
                 .getRegistrationId();
 
+        Map<String, Object> attributes = new HashMap<>(oAuth2User.getAttributes());
+
+        // GitHub: email might be null, fetch from /user/emails
+        if ("github".equalsIgnoreCase(registrationId) && attributes.get("email") == null) {
+            String email = fetchGithubEmail(userRequest);
+            attributes.put("email", email);
+        }
+
         OAuth2UserInfo userInfo = OAuth2UserInfoFactory
-                .getOAuth2UserInfo(registrationId, oAuth2User.getAttributes());
+                .getOAuth2UserInfo(registrationId, attributes);
 
         validateUserInfo(userInfo);
 
@@ -100,5 +113,29 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                             "Ensure the 'email' scope is requested."
             );
         }
+    }
+
+    private String fetchGithubEmail(OAuth2UserRequest userRequest) {
+        RestTemplate restTemplate = new RestTemplate();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(userRequest.getAccessToken().getTokenValue());
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                "https://api.github.com/user/emails",
+                HttpMethod.GET,
+                entity,
+                new ParameterizedTypeReference<>() {
+                }
+        );
+
+        return response.getBody().stream()
+                .filter(email -> Boolean.TRUE.equals(email.get("primary")))
+                .map(email -> (String) email.get("email"))
+                .findFirst()
+                .orElseThrow(() -> new OAuth2AuthenticationException(
+                        "Unable to retrieve email from GitHub"
+                ));
     }
 }
