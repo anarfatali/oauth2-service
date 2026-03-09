@@ -5,15 +5,18 @@ import az.company.oauth2login.repository.BlacklistedTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class TokenBlacklistService {
 
     private final BlacklistedTokenRepository blacklistedTokenRepository;
 
+    @Transactional
     public void blacklist(String token, Instant expiryDate) {
         if (!blacklistedTokenRepository.existsByToken(token)) {
             BlacklistedToken blacklistedToken = BlacklistedToken.builder()
@@ -28,7 +31,6 @@ public class TokenBlacklistService {
         return blacklistedTokenRepository.existsByToken(token);
     }
 
-    // Runs every hour — removes expired tokens that are no longer a threat anyway
     @Scheduled(fixedRate = 3600000)
     public void cleanUpExpiredTokens() {
         blacklistedTokenRepository.deleteAllExpired(Instant.now());

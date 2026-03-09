@@ -12,7 +12,7 @@ public class GithubOAuth2UserInfo extends OAuth2UserInfo {
 
     @Override
     public String getId() {
-        return String.valueOf(attributes.get("id"));  // GitHub returns Integer, not String
+        return String.valueOf(attributes.get("id"));
     }
 
     @Override
