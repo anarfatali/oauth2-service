@@ -34,28 +34,38 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     @Override
     @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        OAuth2User oAuth2User = super.loadUser(userRequest);
+        try {
+            OAuth2User oAuth2User = super.loadUser(userRequest);
 
-        String registrationId = userRequest
-                .getClientRegistration()
-                .getRegistrationId();
+            String registrationId = userRequest
+                    .getClientRegistration()
+                    .getRegistrationId();
 
-        Map<String, Object> attributes = new HashMap<>(oAuth2User.getAttributes());
+            log.info("OAuth2 provider: {}", registrationId);
+            log.info("OAuth2 user attributes: {}", oAuth2User.getAttributes());
 
-        // GitHub: email might be null, fetch from /user/emails
-        if ("github".equalsIgnoreCase(registrationId) && attributes.get("email") == null) {
-            String email = fetchGithubEmail(userRequest);
-            attributes.put("email", email);
+
+            Map<String, Object> attributes = new HashMap<>(oAuth2User.getAttributes());
+
+            if ("github".equalsIgnoreCase(registrationId) && attributes.get("email") == null) {
+                String email = fetchGithubEmail(userRequest);
+                attributes.put("email", email);
+            }
+
+            OAuth2UserInfo userInfo = OAuth2UserInfoFactory
+                    .getOAuth2UserInfo(registrationId, attributes);
+
+            validateUserInfo(userInfo);
+
+            User user = processOAuth2User(userInfo, registrationId);
+
+            return new CustomOAuth2UserPrincipal(user, oAuth2User.getAttributes());
+        } catch (OAuth2AuthenticationException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error during OAuth2 login: {}", e.getMessage(), e);
+            throw new OAuth2AuthenticationException(e.getMessage());
         }
-
-        OAuth2UserInfo userInfo = OAuth2UserInfoFactory
-                .getOAuth2UserInfo(registrationId, attributes);
-
-        validateUserInfo(userInfo);
-
-        User user = processOAuth2User(userInfo, registrationId);
-
-        return new CustomOAuth2UserPrincipal(user, oAuth2User.getAttributes());
     }
 
     private User processOAuth2User(OAuth2UserInfo userInfo, String registrationId) {

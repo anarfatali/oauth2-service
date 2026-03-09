@@ -1,7 +1,7 @@
 package az.company.oauth2login.controller;
 
 import az.company.oauth2login.dto.response.UserResponse;
-import az.company.oauth2login.repository.UserRepository;
+import az.company.oauth2login.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,22 +15,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     @GetMapping("/profile")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<UserResponse> getProfile(
             @AuthenticationPrincipal String email
     ) {
-        return userRepository.findByEmail(email)
-                .map(user -> ResponseEntity.ok(UserResponse.fromEntity(user)))
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(userService.getProfile(email));
     }
 
     @GetMapping("/list")
     @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<String> getUserList() {
-        long count = userRepository.count();
-        return ResponseEntity.ok("Total registered users: " + count);
+        return ResponseEntity.ok(
+                "Total registered users: " + userService.getUserCount()
+        );
     }
 }

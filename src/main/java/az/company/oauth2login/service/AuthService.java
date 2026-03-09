@@ -7,6 +7,7 @@ import az.company.oauth2login.domain.enums.RoleType;
 import az.company.oauth2login.dto.request.LoginRequest;
 import az.company.oauth2login.dto.request.RegisterRequest;
 import az.company.oauth2login.dto.response.AuthResponse;
+import az.company.oauth2login.dto.response.UserResponse;
 import az.company.oauth2login.repository.RoleRepository;
 import az.company.oauth2login.repository.UserRepository;
 import az.company.oauth2login.security.UserDetailsImpl;
@@ -27,6 +28,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class AuthService {
 
@@ -72,7 +74,6 @@ public class AuthService {
         return buildAuthResponse(authentication);
     }
 
-
     public AuthResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -84,16 +85,23 @@ public class AuthService {
         return buildAuthResponse(authentication);
     }
 
+    @Transactional
     public void signOut(String accessToken, String refreshToken) {
-        // Blacklist the access token
         Instant accessExpiry = tokenProvider.getExpiryDateFromToken(accessToken);
         tokenBlacklistService.blacklist(accessToken, accessExpiry);
 
-        // Blacklist the refresh token too
         Instant refreshExpiry = tokenProvider.getExpiryDateFromToken(refreshToken);
         tokenBlacklistService.blacklist(refreshToken, refreshExpiry);
 
         SecurityContextHolder.clearContext();
+    }
+
+    public UserResponse getCurrentUser(String email) {
+        return userRepository.findByEmail(email)
+                .map(UserResponse::fromEntity)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "User not found with email: " + email
+                ));
     }
 
     private AuthResponse buildAuthResponse(Authentication authentication) {
