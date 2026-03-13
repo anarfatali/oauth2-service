@@ -28,7 +28,6 @@ public class OAuth2AuthenticationFailureHandler
             AuthenticationException exception
     ) throws IOException {
 
-        // getMessage() can be null depending on the exception type
         String message = exception.getMessage() != null
                 ? exception.getMessage()
                 : "OAuth2 authentication failed";
